@@ -102,18 +102,20 @@ app.use("/api/v1/admin/analytics", adminAnalyticsRouter);
 app.use("/api/v1/admin/payment-methods", adminPaymentMethodsRouter);
 app.use("/api/v1/admin/services", adminServicesRouter);
 
-// ── Serve Mini App static build ───────────────────────────────────────────────
-// The built Mini App is at ../mini-app/dist relative to the backend src/ folder
+// ── Serve Mini App static build (monorepo / local dev only) ──────────────────
+// When deployed standalone on Render, the mini-app is on Netlify — skip this.
+// Only activate when the dist folder is physically present next to this repo.
+import { existsSync } from "fs";
 const miniAppDist = join(__dirname, "../../mini-app/dist");
-app.use(express.static(miniAppDist));
+if (existsSync(miniAppDist)) {
+  app.use(express.static(miniAppDist));
+  app.get("*", (_req, res) => {
+    res.sendFile(join(miniAppDist, "index.html"));
+  });
+}
 
-// ── API 404 (only for /api routes) ────────────────────────────────────────────
+// ── API 404 + error handler ───────────────────────────────────────────────────
 app.use("/api", notFound);
-
-// ── SPA fallback — serve index.html for all non-API routes ───────────────────
-app.get("*", (_req, res) => {
-  res.sendFile(join(miniAppDist, "index.html"));
-});
 
 app.use(errorHandler);
 
