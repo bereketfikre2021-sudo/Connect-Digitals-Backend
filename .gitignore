@@ -1,0 +1,36 @@
+# Environment — NEVER commit
+.env
+.env.*
+!.env.example
+!.env.bot.example
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Prisma dev DB
+prisma/migrations/dev.db
+prisma/migrations/dev.db-journal
+
+# Logs
+*.log
+logs/
+pino-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# TypeScript
+*.tsbuildinfo
+
+# Test coverage
+coverage/

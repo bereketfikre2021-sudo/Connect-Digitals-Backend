@@ -1,0 +1,668 @@
+// =============================================================================
+// Connect Digitals Promotion Platform — Prisma Schema
+// Phase 1 — Database Foundation
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum TargetType {
+  PAGE
+  PROFILE
+  POST
+  VIDEO
+  CHANNEL
+  WEBSITE
+  CUSTOM
+}
+
+enum FulfillmentType {
+  MANUAL
+  META_ADS
+  GOOGLE_ADS
+  TIKTOK_ADS
+  CUSTOM
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_SUBMITTED
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  PROCESSING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  PENDING
+  QUEUED
+  AWAITING_APPROVAL
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  ORDER_PAYMENT
+  REFUND
+  ADJUSTMENT
+  REWARD
+}
+
+enum CampaignProvider {
+  MANUAL
+  META_ADS
+  GOOGLE_ADS
+  TIKTOK_ADS
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum MetricSource {
+  MANUAL
+  PROVIDER_API
+}
+
+enum ReportStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationChannel {
+  TELEGRAM
+}
+
+enum NotificationEvent {
+  ORDER_CREATED
+  PAYMENT_SUBMITTED
+  PAYMENT_APPROVED
+  PAYMENT_REJECTED
+  ORDER_PROCESSING
+  FULFILLMENT_STARTED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  REFUND_ISSUED
+  REPORT_AVAILABLE
+  WALLET_CREDITED
+}
+
+enum AuditActorType {
+  ADMIN
+  CUSTOMER
+  SYSTEM
+}
+
+// =============================================================================
+// IDENTITY & ACCESS
+// =============================================================================
+
+/// Customer account. One record per Telegram user.
+model User {
+  id        String     @id @default(cuid())
+  firstName String
+  lastName  String?
+  username  String? // Telegram @username — may be null
+  phone     String?
+  status    UserStatus @default(ACTIVE)
+  /// Supabase Auth UUID — links app User to the Supabase Auth identity
+  supabaseUserId String? @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  telegramIdentity TelegramIdentity?
+  wallet           Wallet?
+  orders           Order[]
+  payments         Payment[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]        @relation("AuditCustomer")
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+/// Telegram-specific identity data for a customer.
+model TelegramIdentity {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  telegramUserId String   @unique // Telegram's numeric user ID stored as string
+  username       String?
+  firstName      String
+  lastName       String?
+  photoUrl       String?
+  isPremium      Boolean  @default(false)
+  authDate       DateTime
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId])
+}
+
+/// Admin/staff user account. Linked to a User record for identity.
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  /// No longer used after Supabase Auth migration — kept nullable for rollback safety
+  passwordHash String?
+  firstName    String
+  lastName     String
+  role         AdminRole @default(OPERATOR)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations — admin actions referencing this user
+  reviewedPayments Payment[]         @relation("PaymentReviewer")
+  assignedTasks    FulfillmentTask[] @relation("TaskAssignee")
+  auditLogsAsActor AuditLog[]        @relation("AuditAdmin")
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+}
+
+// =============================================================================
+// SERVICE CATALOGUE
+// =============================================================================
+
+/// Social media / digital platform (TikTok, Instagram, etc.)
+model Platform {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  iconUrl   String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  services PromotionService[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+/// A single promotion service offered on a platform (e.g. "TikTok Followers").
+model PromotionService {
+  id                    String          @id @default(cuid())
+  platformId            String
+  name                  String
+  slug                  String          @unique
+  description           String?
+  shortDescription      String?
+  /// What kind of URL the customer must provide
+  targetType            TargetType
+  /// Human-readable label for the URL field, e.g. "TikTok Profile URL"
+  targetLabel           String
+  /// Placeholder text for the URL input
+  targetPlaceholder     String
+  /// Help text shown below the URL field
+  targetHelpText        String?
+  /// Whether a target URL is mandatory for this service
+  requiresTargetUrl     Boolean         @default(true)
+  /// JSON blob for additional campaign configuration fields (future use)
+  campaignRequirements  Json?
+  /// How orders for this service are fulfilled
+  fulfillmentType       FulfillmentType @default(MANUAL)
+  /// Whether fulfilment requires a human to review before starting
+  requiresHumanApproval Boolean         @default(false)
+  isActive              Boolean         @default(true)
+  sortOrder             Int             @default(0)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  platform Platform         @relation(fields: [platformId], references: [id])
+  packages ServicePackage[]
+  orders   Order[]
+
+  @@index([platformId])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@index([fulfillmentType])
+}
+
+/// A purchasable package for a service (e.g. "1,000 TikTok Followers").
+model ServicePackage {
+  id              String   @id @default(cuid())
+  serviceId       String
+  name            String
+  description     String?
+  quantity        Int
+  /// Price in ETB cents (smallest denomination — avoids floating-point)
+  priceETB        Int
+  /// Estimated delivery window in days
+  deliveryDaysMin Int      @default(1)
+  deliveryDaysMax Int      @default(7)
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  service PromotionService @relation(fields: [serviceId], references: [id])
+  orders  Order[]
+
+  @@index([serviceId])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+// =============================================================================
+// ORDERS
+// =============================================================================
+
+/// A customer's promotion order. Captures everything needed to fulfill it.
+model Order {
+  id                String            @id @default(cuid())
+  /// Human-readable order number, e.g. CD10001
+  orderNumber       String            @unique
+  userId            String
+  serviceId         String
+  packageId         String
+  /// The target URL this promotion is for (post, profile, channel, etc.)
+  targetUrl         String
+  /// The type of target — denormalised from service for audit clarity
+  targetType        TargetType
+  quantity          Int
+  /// Unit price at the time of order (ETB cents) — snapshot, not live
+  unitPriceETB      Int
+  /// Total amount (ETB cents) — computed server-side, never from client
+  totalAmountETB    Int
+  /// Current order lifecycle status
+  orderStatus       OrderStatus       @default(PENDING_PAYMENT)
+  /// Shortcut field reflecting payment state
+  paymentStatus     PaymentStatus     @default(PENDING)
+  /// Shortcut field reflecting fulfillment state
+  fulfillmentStatus FulfillmentStatus @default(PENDING)
+  notes             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  completedAt       DateTime?
+
+  user            User             @relation(fields: [userId], references: [id])
+  service         PromotionService @relation(fields: [serviceId], references: [id])
+  package         ServicePackage   @relation(fields: [packageId], references: [id])
+  payments        Payment[]
+  fulfillmentTask FulfillmentTask?
+  campaign        Campaign?
+  reports         Report[]
+  auditLogs       AuditLog[]       @relation("AuditOrder")
+
+  @@index([userId])
+  @@index([orderStatus])
+  @@index([paymentStatus])
+  @@index([fulfillmentStatus])
+  @@index([createdAt])
+  @@index([orderNumber])
+}
+
+// =============================================================================
+// PAYMENTS
+// =============================================================================
+
+/// A configured payment method (e.g. CBE, Awash Bank, Telebirr).
+/// Managed by admins — account details never hardcoded in source.
+model PaymentMethod {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  accountName   String
+  accountNumber String
+  bankName      String?
+  /// Full payment instructions shown to the customer
+  instructions  String
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+/// A payment submission by a customer for an order or wallet deposit.
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  /// Null for wallet-deposit-only payments not tied to an order
+  orderId         String?
+  paymentMethodId String
+  /// Amount paid (ETB cents)
+  amountETB       Int
+  /// Bank/mobile reference number entered by the customer
+  reference       String
+  /// Supabase Storage file URL for the payment screenshot
+  screenshotUrl   String?
+  /// Supabase Storage file key (for deletion / signed URL generation)
+  screenshotKey   String?
+  status          PaymentStatus @default(PENDING)
+  /// Idempotency key — prevents duplicate submissions
+  idempotencyKey  String        @unique
+  /// Admin who reviewed this payment
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id])
+  order         Order?             @relation(fields: [orderId], references: [id])
+  paymentMethod PaymentMethod      @relation(fields: [paymentMethodId], references: [id])
+  reviewer      AdminUser?         @relation("PaymentReviewer", fields: [reviewedBy], references: [id])
+  walletTx      WalletTransaction?
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([idempotencyKey])
+}
+
+// =============================================================================
+// WALLET
+// =============================================================================
+
+/// Customer wallet — one per user, auto-created on first login.
+model Wallet {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  /// Balance in ETB cents — DB CHECK constraint prevents < 0
+  balanceETB Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@index([userId])
+}
+
+/// Immutable ledger of wallet balance changes.
+/// Never update a WalletTransaction — only insert new records.
+model WalletTransaction {
+  id            String                @id @default(cuid())
+  walletId      String
+  userId        String
+  type          WalletTransactionType
+  /// Amount involved (ETB cents) — always positive
+  amountETB     Int
+  /// Balance before this transaction (ETB cents)
+  balanceBefore Int
+  /// Balance after this transaction (ETB cents)
+  balanceAfter  Int
+  description   String?
+  /// External reference (bank ref, order number, etc.)
+  reference     String?
+  /// If this transaction relates to a Payment record
+  paymentId     String?               @unique
+  /// If this transaction relates to an Order
+  orderId       String?
+  createdAt     DateTime              @default(now())
+
+  wallet  Wallet   @relation(fields: [walletId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// FULFILLMENT
+// =============================================================================
+
+/// One fulfillment task per order. Tracks how the order is being delivered.
+model FulfillmentTask {
+  id                String            @id @default(cuid())
+  orderId           String            @unique
+  /// Which fulfillment engine handles this task
+  fulfillmentType   FulfillmentType   @default(MANUAL)
+  status            FulfillmentStatus @default(PENDING)
+  /// Whether a human must approve before processing begins
+  requiresApproval  Boolean           @default(false)
+  /// Admin assigned to manually work this task
+  assignedTo        String?
+  /// Reference ID from an external provider (future use)
+  providerReference String?
+  errorMessage      String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  order    Order      @relation(fields: [orderId], references: [id])
+  assignee AdminUser? @relation("TaskAssignee", fields: [assignedTo], references: [id])
+  campaign Campaign?
+
+  @@index([status])
+  @@index([fulfillmentType])
+  @@index([assignedTo])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// CAMPAIGNS
+// =============================================================================
+
+/// A campaign record — for orders that involve an advertising campaign.
+/// Not all orders require a Campaign; manual fulfillment often does not.
+model Campaign {
+  id                 String           @id @default(cuid())
+  orderId            String           @unique
+  fulfillmentTaskId  String           @unique
+  provider           CampaignProvider @default(MANUAL)
+  /// Provider's own campaign ID (future use)
+  providerCampaignId String?
+  objective          String?
+  targetUrl          String
+  /// Total budget (ETB cents)
+  budgetETB          Int?
+  /// Daily budget (ETB cents)
+  dailyBudgetETB     Int?
+  durationDays       Int?
+  startDate          DateTime?
+  endDate            DateTime?
+  /// JSON blob for geo-targeting, age, interests, etc. (future use)
+  location           Json?
+  audienceConfig     Json?
+  /// Status reported by the external provider
+  providerStatus     String?
+  internalStatus     CampaignStatus   @default(DRAFT)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  order           Order            @relation(fields: [orderId], references: [id])
+  fulfillmentTask FulfillmentTask  @relation(fields: [fulfillmentTaskId], references: [id])
+  metrics         CampaignMetric[]
+  reports         Report[]
+
+  @@index([orderId])
+  @@index([internalStatus])
+  @@index([provider])
+}
+
+/// Daily metric snapshot for a campaign.
+model CampaignMetric {
+  id          String       @id @default(cuid())
+  campaignId  String
+  date        DateTime     @db.Date
+  /// Who produced this data: a human admin or a provider API
+  source      MetricSource @default(MANUAL)
+  impressions Int?
+  reach       Int?
+  clicks      Int?
+  /// Click-through rate (stored as integer basis points: 1.23% = 123)
+  ctrBps      Int?
+  /// Cost per click (ETB cents)
+  cpcETB      Int?
+  /// Cost per mille (ETB cents per 1000 impressions)
+  cpmETB      Int?
+  conversions Int?
+  videoViews  Int?
+  /// Engagement count (all interactions)
+  engagement  Int?
+  likes       Int?
+  comments    Int?
+  shares      Int?
+  /// Spend for this date (ETB cents)
+  spendETB    Int?
+  /// Provider-specific extra fields
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+
+  @@unique([campaignId, date, source])
+  @@index([campaignId])
+  @@index([date])
+  @@index([source])
+}
+
+// =============================================================================
+// REPORTS
+// =============================================================================
+
+/// A performance report for an order, optionally linked to a campaign.
+model Report {
+  id          String       @id @default(cuid())
+  orderId     String
+  campaignId  String?
+  title       String
+  /// Reporting period start
+  periodStart DateTime?
+  /// Reporting period end
+  periodEnd   DateTime?
+  /// Structured summary — metrics snapshot, notes, etc.
+  summary     Json?
+  /// Supabase Storage URL for a PDF/image report file
+  fileUrl     String?
+  fileKey     String?
+  status      ReportStatus @default(DRAFT)
+  generatedAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  order    Order     @relation(fields: [orderId], references: [id])
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@index([campaignId])
+}
+
+// =============================================================================
+// NOTIFICATIONS
+// =============================================================================
+
+/// A notification sent (or to be sent) to a customer.
+model Notification {
+  id            String              @id @default(cuid())
+  userId        String
+  channel       NotificationChannel @default(TELEGRAM)
+  event         NotificationEvent
+  title         String
+  message       String
+  /// Extra event-specific data (order ID, amount, etc.)
+  metadata      Json?
+  sentAt        DateTime?
+  deliveredAt   DateTime?
+  failedAt      DateTime?
+  failureReason String?
+  readAt        DateTime?
+  createdAt     DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([event])
+  @@index([sentAt])
+  @@index([readAt])
+}
+
+// =============================================================================
+// AUDIT LOG
+// =============================================================================
+
+/// Immutable audit trail. Never update or delete rows in this table.
+model AuditLog {
+  id         String         @id @default(cuid())
+  /// ID of the admin or customer who performed the action (null = system)
+  actorId    String?
+  actorType  AuditActorType
+  action     String
+  entityType String
+  entityId   String
+  /// JSON snapshot of the record before the change
+  before     Json?
+  /// JSON snapshot of the record after the change
+  after      Json?
+  /// Order related to this log entry (optional convenience index)
+  orderId    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime       @default(now())
+
+  /// Polymorphic actor relations (one will be null)
+  adminActor    AdminUser? @relation("AuditAdmin", fields: [actorId], references: [id], map: "AuditLog_adminActor_fkey")
+  customerActor User?      @relation("AuditCustomer", fields: [actorId], references: [id], map: "AuditLog_customerActor_fkey")
+  order         Order?     @relation("AuditOrder", fields: [orderId], references: [id])
+
+  @@index([actorId])
+  @@index([actorType])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([orderId])
+  @@index([createdAt])
+}
