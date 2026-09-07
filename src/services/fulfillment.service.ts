@@ -294,13 +294,38 @@ export async function updateFulfillmentStatus(
       });
 
       // 2. Auto-create a DRAFT report for the admin to review and publish.
-      //    Idempotent — skipped if a report already exists for this order.
-      //    Non-fatal — failure is logged but never throws.
       await createDraftReportForOrder(
         task.orderId,
         task.order.orderNumber,
         task.order.service.name,
       );
+
+      // 3. Cashback reward — 2% of order total credited to wallet (non-fatal)
+      try {
+        const orderFull = await prisma.order.findUnique({
+          where: { id: task.orderId },
+          select: { totalAmountETB: true, orderNumber: true },
+        });
+        if (orderFull && orderFull.totalAmountETB > 0) {
+          const cashbackAmount = Math.floor(orderFull.totalAmountETB * 0.02); // 2%
+          if (cashbackAmount > 0) {
+            const { creditWallet } = await import("./wallet.service.js");
+            // Use a deterministic synthetic paymentId so the reward is idempotent
+            const cashbackId = `cashback-${task.orderId}`;
+            await creditWallet({
+              userId:      task.order.userId,
+              amountETB:   cashbackAmount,
+              paymentId:   cashbackId,
+              description: `2% cashback reward for order ${orderFull.orderNumber}`,
+              actorId:     adminId,
+            });
+            logger.info({ orderId: task.orderId, cashbackAmount }, "Cashback reward credited");
+          }
+        }
+      } catch (cashbackErr) {
+        // Non-fatal — log but never fail the completion
+        logger.error({ err: cashbackErr, orderId: task.orderId }, "Failed to credit cashback reward");
+      }
     }
   }
 

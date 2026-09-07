@@ -24,15 +24,16 @@ adminWalletRouter.get("/", async (req, res, next) => {
     const pageSize = Math.min(50, Math.max(1, parseInt((req.query["pageSize"] as string) ?? "20", 10)));
     const search = (req.query["search"] as string | undefined)?.trim();
 
-    const where = search
+      const where = search
       ? {
           OR: [
             { user: { firstName: { contains: search, mode: "insensitive" as const } } },
             { user: { lastName: { contains: search, mode: "insensitive" as const } } },
             { user: { username: { contains: search, mode: "insensitive" as const } } },
           ],
+          deletedAt: null,
         }
-      : {};
+      : { deletedAt: null };
 
     const [wallets, total] = await Promise.all([
       prisma.wallet.findMany({
@@ -106,6 +107,54 @@ adminWalletRouter.post(
         amountETB: parsed.data.amountETB,
         paymentId: parsed.data.referenceId,
         description: parsed.data.description,
+        actorId: req.admin!.sub,
+      });
+
+      res.json({ success: true, data: { balanceAfter: result.balanceAfter } });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /api/v1/admin/wallets/deposits/:paymentId/approve
+// Approves a deposit Payment (orderId=null) and atomically credits the wallet.
+adminWalletRouter.post(
+  "/deposits/:paymentId/approve",
+  requireRole("SUPER_ADMIN" as never, "ADMIN" as never),
+  async (req, res, next) => {
+    try {
+      const paymentId = req.params["paymentId"] as string;
+
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        select: {
+          id: true, userId: true, orderId: true,
+          amountETB: true, status: true,
+          user: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      if (!payment) throw new AppError(404, "NOT_FOUND", "Payment not found");
+      if (payment.orderId !== null) {
+        throw new AppError(409, "NOT_A_DEPOSIT", "This payment is linked to an order — use the order approval endpoint");
+      }
+      if (payment.status !== "UNDER_REVIEW") {
+        throw new AppError(409, "INVALID_STATE", `Payment is already ${payment.status}`);
+      }
+
+      // Mark payment as approved
+      await prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: "APPROVED", reviewedBy: req.admin!.sub, reviewedAt: new Date() },
+      });
+
+      // Credit the wallet — creditWallet is idempotent on paymentId
+      const result = await creditWallet({
+        userId: payment.userId,
+        amountETB: payment.amountETB,
+        paymentId: payment.id,
+        description: "Wallet deposit approved",
         actorId: req.admin!.sub,
       });
 

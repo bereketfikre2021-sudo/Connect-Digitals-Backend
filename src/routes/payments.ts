@@ -106,6 +106,29 @@ paymentsRouter.post("/", paymentSubmitLimiter, async (req, res, next) => {
 });
 
 /**
+ * GET /api/v1/payments
+ * Lists customer's own payments. Supports ?status=UNDER_REVIEW&type=deposit
+ */
+paymentsRouter.get("/", async (req, res, next) => {
+  try {
+    const status = req.query["status"] as string | undefined;
+    const type   = req.query["type"]   as string | undefined; // "deposit" = orderId is null
+
+    const where: Record<string, unknown> = { userId: req.customer!.sub };
+    if (status) where["status"] = status;
+    if (type === "deposit") where["orderId"] = null;
+
+    const payments = await prisma.payment.findMany({
+      where: where as never,
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, amountETB: true, status: true, createdAt: true, orderId: true },
+    });
+    res.json({ success: true, data: payments });
+  } catch (err) { next(err); }
+});
+
+/**
  * GET /api/v1/payments/:id
  */
 paymentsRouter.get("/:id", async (req, res, next) => {

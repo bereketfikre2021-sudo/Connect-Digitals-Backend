@@ -322,6 +322,10 @@ model Order {
   /// Shortcut field reflecting fulfillment state
   fulfillmentStatus FulfillmentStatus @default(PENDING)
   notes             String?
+  /// Applied promo code (if any)
+  promoCodeId       String?
+  /// Discount applied at order creation (ETB cents)
+  discountETB       Int      @default(0)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   completedAt       DateTime?
@@ -600,6 +604,49 @@ model Report {
   @@index([orderId])
   @@index([status])
   @@index([campaignId])
+}
+
+// =============================================================================
+// PROMO CODES
+// =============================================================================
+
+/// A discount code that reduces the order total.
+model PromoCode {
+  id              String    @id @default(cuid())
+  code            String    @unique // e.g. "LAUNCH20"
+  /// Discount percentage (0-100)
+  discountPercent Int
+  /// Maximum number of times this code can be used (null = unlimited)
+  maxUses         Int?
+  /// How many times it has been used
+  usedCount       Int       @default(0)
+  /// Minimum order amount in ETB cents to qualify
+  minOrderETB     Int       @default(0)
+  expiresAt       DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  redemptions PromoRedemption[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+/// Records each use of a promo code by a customer on an order.
+model PromoRedemption {
+  id          String   @id @default(cuid())
+  promoCodeId String
+  userId      String
+  orderId     String   @unique
+  /// Discount amount applied (ETB cents)
+  discountETB Int
+  createdAt   DateTime @default(now())
+
+  promoCode PromoCode @relation(fields: [promoCodeId], references: [id])
+
+  @@index([promoCodeId])
+  @@index([userId])
 }
 
 // =============================================================================

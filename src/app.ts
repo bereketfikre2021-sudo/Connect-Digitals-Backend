@@ -31,6 +31,12 @@ import { adminReportsRouter } from "./routes/admin/reports.js";
 import { adminAnalyticsRouter } from "./routes/admin/analytics.js";
 import { adminPaymentMethodsRouter } from "./routes/admin/payment-methods.js";
 import { adminServicesRouter } from "./routes/admin/services.js";
+import { adminUsersRouter } from "./routes/admin/admin-users.js";
+import { adminAuditLogsRouter } from "./routes/admin/audit-logs.js";
+import { adminExportRouter } from "./routes/admin/export.js";
+import { adminPromoCodesRouter } from "./routes/admin/promo-codes.js";
+import { promoCodesRouter } from "./routes/promo-codes.js";
+import { notificationsRouter } from "./routes/notifications.js";
 
 const app: Application = express();
 
@@ -101,6 +107,13 @@ app.use("/api/v1/admin/reports", adminReportsRouter);
 app.use("/api/v1/admin/analytics", adminAnalyticsRouter);
 app.use("/api/v1/admin/payment-methods", adminPaymentMethodsRouter);
 app.use("/api/v1/admin/services", adminServicesRouter);
+app.use("/api/v1/admin/admin-users", adminUsersRouter);
+app.use("/api/v1/admin/audit-logs", adminAuditLogsRouter);
+app.use("/api/v1/export", adminExportRouter);
+app.use("/api/v1/admin/export", adminExportRouter);
+app.use("/api/v1/admin/promo-codes", adminPromoCodesRouter);
+app.use("/api/v1/promo-codes", promoCodesRouter);
+app.use("/api/v1/notifications", notificationsRouter);
 
 // ── Serve Mini App static build (monorepo / local dev only) ──────────────────
 // When deployed standalone on Render, the mini-app is on Netlify — skip this.
