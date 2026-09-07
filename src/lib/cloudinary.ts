@@ -80,8 +80,57 @@ export async function getSignedProofUrl(
 }
 
 /**
- * Deletes a payment proof from storage.
+ * Uploads a logo image to a PUBLIC Supabase Storage bucket.
+ * Returns a permanent, non-expiring public URL — suitable for brand
+ * logos that are not sensitive (unlike payment screenshots).
+ *
+ * The bucket "payment-method-logos" must be created in Supabase with
+ * public access enabled. If it doesn't exist yet, falls back to
+ * generating a long-lived signed URL (24h) from the private bucket.
  */
+export async function uploadLogoPublic(
+  buffer: Buffer,
+  mimetype: string
+): Promise<{ publicUrl: string; storagePath: string }> {
+  const storage = getStorage();
+  const ext = mimetype === "image/svg+xml" ? "svg"
+    : mimetype === "image/png"  ? "png"
+    : mimetype === "image/webp" ? "webp"
+    : "jpg";
+  const storagePath = `logos/${randomUUID()}.${ext}`;
+  const PUBLIC_BUCKET = "payment-method-logos";
+
+  // Try public bucket first
+  const { error: uploadError } = await storage
+    .from(PUBLIC_BUCKET)
+    .upload(storagePath, buffer, { contentType: mimetype, upsert: false });
+
+  if (!uploadError) {
+    // Get permanent public URL
+    const { data } = storage.from(PUBLIC_BUCKET).getPublicUrl(storagePath);
+    return { publicUrl: data.publicUrl, storagePath };
+  }
+
+  // Fallback: use the private payment-proofs bucket with a 365-day signed URL
+  // This handles the case where the public bucket hasn't been created yet.
+  const { error: fallbackError } = await storage
+    .from(BUCKET)
+    .upload(`admin-logos/${storagePath}`, buffer, { contentType: mimetype, upsert: false });
+
+  if (fallbackError) {
+    throw new AppError(500, "UPLOAD_FAILED", `Failed to upload logo: ${fallbackError.message}`);
+  }
+
+  const { data: signedData, error: signErr } = await storage
+    .from(BUCKET)
+    .createSignedUrl(`admin-logos/${storagePath}`, 365 * 24 * 3600); // 1 year
+
+  if (signErr || !signedData?.signedUrl) {
+    throw new AppError(500, "SIGNED_URL_FAILED", "Failed to generate logo URL");
+  }
+
+  return { publicUrl: signedData.signedUrl, storagePath: `admin-logos/${storagePath}` };
+}
 export async function deletePaymentProof(publicId: string): Promise<void> {
   try {
     const storage = getStorage();

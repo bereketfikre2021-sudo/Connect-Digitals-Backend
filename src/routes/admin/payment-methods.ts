@@ -17,7 +17,7 @@ import { prisma } from "../../lib/prisma.js";
 import { z } from "zod";
 import {
   validateUploadBuffer,
-  uploadPaymentProof,
+  uploadLogoPublic,
 } from "../../lib/cloudinary.js";
 
 // ── Multer for logo uploads ───────────────────────────────────────────────────
@@ -52,9 +52,9 @@ adminPaymentMethodsRouter.post(
     try {
       if (!req.file) throw new AppError(400, "NO_FILE", "Logo file is required");
       validateUploadBuffer(req.file.buffer, req.file.mimetype, req.file.size);
-      // Reuse the same upload path under a dedicated "admin" user ID to keep logos separate
-      const result = await uploadPaymentProof(req.file.buffer, "admin-logos");
-      res.json({ success: true, data: { key: result.publicId, signedUrl: result.secureUrl } });
+      // Upload to public bucket — returns a permanent URL that never expires
+      const result = await uploadLogoPublic(req.file.buffer, req.file.mimetype);
+      res.json({ success: true, data: { key: result.storagePath, signedUrl: result.publicUrl } });
     } catch (err) { next(err); }
   }
 );
