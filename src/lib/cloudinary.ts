@@ -131,6 +131,22 @@ export async function uploadLogoPublic(
 
   return { publicUrl: signedData.signedUrl, storagePath: `admin-logos/${storagePath}` };
 }
+/**
+ * Generates a fresh signed URL for a logo stored in the private payment-proofs bucket.
+ * Logos are stored at paths like "admin-logos/logos/uuid.jpg".
+ * Returns the storagePath unchanged if Supabase isn't configured (dev/test).
+ */
+export async function refreshLogoUrl(storagePath: string, expiresIn = 3600): Promise<string> {
+  try {
+    const storage = getStorage();
+    const { data, error } = await storage.from(BUCKET).createSignedUrl(storagePath, expiresIn);
+    if (!error && data?.signedUrl) return data.signedUrl;
+    return storagePath;
+  } catch {
+    return storagePath; // fail gracefully — never break the route for a logo
+  }
+}
+
 export async function deletePaymentProof(publicId: string): Promise<void> {
   try {
     const storage = getStorage();

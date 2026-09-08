@@ -82,7 +82,7 @@ export async function creditWallet(input: CreditWalletInput) {
     after: { balanceETB: result.balanceAfter },
   });
 
-  await sendNotification(input.userId, "WALLET_CREDITED", {
+  sendNotification(input.userId, "WALLET_CREDITED", {
     amount: (input.amountETB / 100).toFixed(2),
     balance: (result.balanceAfter / 100).toFixed(2),
   });
@@ -197,7 +197,7 @@ export async function debitWalletForOrder(input: DebitWalletForOrderInput) {
   const { createFulfillmentTask } = await import("./fulfillment.service.js");
   await createFulfillmentTask(input.orderId, order.service.fulfillmentType as never);
 
-  await sendNotification(input.userId, "PAYMENT_APPROVED", {
+  sendNotification(input.userId, "PAYMENT_APPROVED", {
     orderNumber: order.orderNumber,
     amount: (order.totalAmountETB / 100).toFixed(2),
   });
@@ -262,7 +262,7 @@ export async function refundToWallet(
     select: { orderNumber: true },
   });
 
-  await sendNotification(userId, "REFUND_ISSUED", {
+  sendNotification(userId, "REFUND_ISSUED", {
     amount: (amountETB / 100).toFixed(2),
     orderNumber: order?.orderNumber ?? "",
   });

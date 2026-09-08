@@ -1,25 +1,32 @@
 import type { Context } from "grammy";
+import { InlineKeyboard } from "grammy";
+import { env } from "../lib/env.js";
 
 export async function handleHelp(ctx: Context): Promise<void> {
+  const miniAppUrl = env.MINI_APP_URL;
+
+  const keyboard = new InlineKeyboard();
+
+  if (miniAppUrl) {
+    keyboard.webApp("🚀 Open App", miniAppUrl);
+    keyboard.row();
+  }
+
+  keyboard
+    .text("📋 How It Works", "how_it_works")
+    .row()
+    .text("💬 Support", "support_menu");
+
   await ctx.reply(
-    `<b>Connect Digitals — Help</b>\n\n` +
-    `<b>Available commands:</b>\n` +
-    `/start — Welcome message & open the app\n` +
-    `/services — Browse promotion services\n` +
-    `/orders — View your orders\n` +
-    `/wallet — Check your balance\n` +
-    `/profile — Your account details\n` +
-    `/support — Contact our support team\n\n` +
-    `<b>How it works:</b>\n` +
-    `1. Open the app via /start\n` +
-    `2. Browse and select a service\n` +
-    `3. Choose a package\n` +
-    `4. Submit your target link\n` +
-    `5. Complete payment\n` +
-    `6. Track your order\n\n` +
-    `Questions? Use /support`,
-    { parse_mode: "HTML" }
+    `<b>❓ Connect Digitals Help</b>\n\n` +
+    `<b>🚀 Getting Started</b>\n` +
+    `Open the Mini App and create your first campaign.\n\n` +
+    `<b>📊 Campaigns</b>\n` +
+    `View and manage your advertising campaigns.\n\n` +
+    `<b>💳 Payments</b>\n` +
+    `Manage your wallet and payment activity.\n\n` +
+    `<b>💬 Support</b>\n` +
+    `Contact our support team whenever you need assistance.`,
+    { parse_mode: "HTML", reply_markup: keyboard }
   );
 }
-
-

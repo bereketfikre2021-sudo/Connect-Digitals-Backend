@@ -70,7 +70,7 @@ export async function submitPayment(input: SubmitPaymentInput) {
       ipAddress:  input.ipAddress,
     });
 
-    await sendNotification(input.userId, "PAYMENT_SUBMITTED", {
+    sendNotification(input.userId, "PAYMENT_SUBMITTED", {
       orderNumber: "Wallet Deposit",
       amount:      (input.amountETB / 100).toFixed(2),
       reference:   input.reference,
@@ -152,7 +152,7 @@ export async function submitPayment(input: SubmitPaymentInput) {
   });
 
   // Notify customer
-  await sendNotification(input.userId, "PAYMENT_SUBMITTED", {
+  sendNotification(input.userId, "PAYMENT_SUBMITTED", {
     orderNumber: order.orderNumber,
     amount: (authorativeAmountETB / 100).toFixed(2),
     reference: input.reference,
@@ -230,12 +230,12 @@ export async function approvePayment(
   await createFulfillmentTask(payment.orderId!, payment.order.service.fulfillmentType as never);
 
   // Notify customer
-  await sendNotification(payment.userId, "PAYMENT_APPROVED", {
+  sendNotification(payment.userId, "PAYMENT_APPROVED", {
     orderNumber: payment.order.orderNumber,
     amount: (payment.amountETB / 100).toFixed(2),
   });
 
-  await sendNotification(payment.userId, "ORDER_PROCESSING", {
+  sendNotification(payment.userId, "ORDER_PROCESSING", {
     orderNumber: payment.order.orderNumber,
     serviceName: payment.order.service.name,
   });
@@ -293,7 +293,7 @@ export async function rejectPayment(
     ipAddress,
   });
 
-  await sendNotification(payment.userId, "PAYMENT_REJECTED", {
+  sendNotification(payment.userId, "PAYMENT_REJECTED", {
     orderNumber: payment.order?.orderNumber ?? "",
     reason: rejectionReason,
   });

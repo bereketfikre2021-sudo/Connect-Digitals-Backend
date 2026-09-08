@@ -25,9 +25,10 @@ async function generateOrderNumber(): Promise<string> {
 export interface CreateOrderInput {
   userId: string;
   packageId: string;
-  targetUrl: string;
+  targetUrl?: string;
   targetType: string;
   notes?: string;
+  promoCode?: string;
 }
 
 export async function createOrder(input: CreateOrderInput) {
@@ -64,7 +65,9 @@ export async function createOrder(input: CreateOrderInput) {
     userId: input.userId,
     serviceId: pkg.service.id,
     packageId: pkg.id,
-    targetUrl: input.targetUrl,
+    // Prisma schema requires a non-null String for targetUrl.
+    // When the service does not require a URL, store "" rather than undefined.
+    targetUrl: input.targetUrl ?? "",
     targetType: input.targetType as never,
     quantity: pkg.quantity,
     unitPriceETB: pkg.priceETB,

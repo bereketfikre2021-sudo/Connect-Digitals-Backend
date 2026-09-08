@@ -1,16 +1,16 @@
 import { z } from "zod";
-import { uuidSchema, positiveInt } from "./common.js";
+import { cuidSchema, positiveInt } from "./common.js";
 
 export const submitPaymentSchema = z.object({
-  orderId: uuidSchema,
-  paymentMethodId: uuidSchema,
+  orderId: cuidSchema,
+  paymentMethodId: cuidSchema,
   amount: positiveInt,
   reference: z.string().min(1).max(100).trim(),
-  idempotencyKey: uuidSchema,
+  idempotencyKey: cuidSchema,
 });
 
 export const reviewPaymentSchema = z.object({
-  paymentId: uuidSchema,
+  paymentId: cuidSchema,
   action: z.enum(["APPROVE", "REJECT"]),
   rejectionReason: z.string().min(1).max(500).optional(),
 }).refine(

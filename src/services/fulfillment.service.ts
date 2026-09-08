@@ -280,7 +280,7 @@ export async function updateFulfillmentStatus(
   // Send notifications for key transitions
   if (task.order) {
     if (newStatus === "PROCESSING") {
-      await sendNotification(task.order.userId, "FULFILLMENT_STARTED", {
+      sendNotification(task.order.userId, "FULFILLMENT_STARTED", {
         orderNumber: task.order.orderNumber,
         serviceName: task.order.service.name,
         deliveryDays: `${task.order.package.deliveryDaysMin}–${task.order.package.deliveryDaysMax}`,
@@ -288,7 +288,7 @@ export async function updateFulfillmentStatus(
     }
     if (newStatus === "COMPLETED") {
       // 1. Notify customer (non-fatal — sendNotification never throws)
-      await sendNotification(task.order.userId, "ORDER_COMPLETED", {
+      sendNotification(task.order.userId, "ORDER_COMPLETED", {
         orderNumber: task.order.orderNumber,
         serviceName: task.order.service.name,
       });

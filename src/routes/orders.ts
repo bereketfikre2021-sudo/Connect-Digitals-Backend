@@ -12,6 +12,7 @@ import { AppError } from "../middleware/error.js";
 import { createOrder } from "../services/order.service.js";
 import { createOrderSchema } from "../validation/index.js";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 
 export const ordersRouter: IRouter = Router();
 
@@ -21,8 +22,17 @@ ordersRouter.use(requireCustomer);
 // POST /api/v1/orders
 ordersRouter.post("/", async (req, res, next) => {
   try {
+    // Temporary diagnostic: log the raw body so we can see exactly what the frontend sends
+    logger.info({ body: req.body }, "POST /orders raw body");
+
     const parsed = createOrderSchema.safeParse(req.body);
     if (!parsed.success) {
+      // Log field-level detail so we can diagnose future validation failures
+      // without needing a debugger attached.
+      logger.warn(
+        { fields: parsed.error.flatten().fieldErrors, body: { ...req.body, promoCode: req.body.promoCode ? "[redacted]" : undefined } },
+        "Order creation validation failed"
+      );
       throw new AppError(422, "VALIDATION_ERROR", "Invalid order data", parsed.error.flatten());
     }
 
@@ -32,6 +42,15 @@ ordersRouter.post("/", async (req, res, next) => {
       targetUrl: parsed.data.targetUrl,
       targetType: parsed.data.targetType,
       notes: parsed.data.notes,
+      promoCode: parsed.data.promoCode,
+    });
+
+    // Fire-and-forget ORDER_CREATED notification — never blocks the response
+    const { sendNotification } = await import("../services/notification.service.js");
+    sendNotification(req.customer!.sub, "ORDER_CREATED", {
+      orderNumber: order.orderNumber,
+      serviceName: order.service.name,
+      amount: (order.totalAmountETB / 100).toFixed(2),
     });
 
     res.status(201).json({ success: true, data: order });

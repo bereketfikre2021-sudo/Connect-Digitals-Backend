@@ -97,10 +97,14 @@ export async function sendNotification(
     });
   } catch (err) {
     logger.error({ err, userId, event }, "Failed to send Telegram notification");
-    await prisma.notification.updateMany({
-      where: { userId, event: event as never, sentAt: null },
-      data: { failedAt: new Date(), failureReason: String(err) },
-    });
+    try {
+      await prisma.notification.updateMany({
+        where: { userId, event: event as never, sentAt: null },
+        data: { failedAt: new Date(), failureReason: String(err) },
+      });
+    } catch (dbErr) {
+      logger.warn({ dbErr, userId, event }, "Failed to update notification failure status");
+    }
   }
 }
 

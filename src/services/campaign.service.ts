@@ -288,7 +288,7 @@ export async function resumeCampaign(campaignId: string, { adminId }: OverrideOp
   await prisma.campaign.update({ where: { id: campaignId }, data: { internalStatus: "ACTIVE" } });
   await writeAuditLog({ actorId: adminId, actorType: "ADMIN" as never, action: "CAMPAIGN_RESUMED", entityType: "Campaign", entityId: campaignId, before: { internalStatus: campaign.internalStatus }, after: { internalStatus: "ACTIVE" }, orderId: campaign.order.id });
 
-  await sendNotification(campaign.order.userId, "FULFILLMENT_STARTED", {
+  sendNotification(campaign.order.userId, "FULFILLMENT_STARTED", {
     orderNumber: campaign.order.orderNumber,
     serviceName: campaign.order.service.name,
     deliveryDays: "see your campaign details",
