@@ -102,6 +102,9 @@ adminOrdersRouter.get("/:id", async (req, res, next) => {
             assignee: { select: { firstName: true, lastName: true } },
           },
         },
+        campaign: {
+          select: { id: true, internalStatus: true, provider: true, startDate: true, endDate: true },
+        },
         reports: {
           where: { status: "PUBLISHED" },
           select: { id: true, title: true, publishedAt: true },
