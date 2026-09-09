@@ -98,8 +98,8 @@ export async function handleCallbackSupportCampaign(ctx: Context): Promise<void>
     await ctx.reply(
       `<b>📊 Campaign Support</b>\n\n` +
       `For help with your campaigns — creation, targeting, budget, or approval status — ` +
-      `please reach out to our support team:\n\n` +
-      `📧 <b>support@connectdigitals.com</b>\n\n` +
+      `please reach out to our support team directly on Telegram:\n\n` +
+      `👤 <b><a href="https://t.me/Believeandforward">@Believeandforward</a></b>\n\n` +
       `Include your campaign details so we can assist you faster.`,
       { parse_mode: "HTML" }
     );
@@ -117,7 +117,7 @@ export async function handleCallbackSupportPayment(ctx: Context): Promise<void> 
     await ctx.reply(
       `<b>💳 Payment Support</b>\n\n` +
       `For help with payments, deposits, or wallet issues:\n\n` +
-      `📧 <b>support@connectdigitals.com</b>\n\n` +
+      `👤 <b><a href="https://t.me/Believeandforward">@Believeandforward</a></b>\n\n` +
       `Please include your payment reference or order number when contacting us.`,
       { parse_mode: "HTML" }
     );
@@ -135,7 +135,7 @@ export async function handleCallbackSupportAccount(ctx: Context): Promise<void> 
     await ctx.reply(
       `<b>👤 Account Support</b>\n\n` +
       `For help with your account — access, profile, or security concerns:\n\n` +
-      `📧 <b>support@connectdigitals.com</b>\n\n` +
+      `👤 <b><a href="https://t.me/Believeandforward">@Believeandforward</a></b>\n\n` +
       `Response time: within 24 hours.`,
       { parse_mode: "HTML" }
     );
@@ -153,7 +153,7 @@ export async function handleCallbackSupportContact(ctx: Context): Promise<void> 
     await ctx.reply(
       `<b>💬 Contact Support</b>\n\n` +
       `Our support team is available to help with any question.\n\n` +
-      `📧 <b>support@connectdigitals.com</b>\n` +
+      `👤 <b><a href="https://t.me/Believeandforward">@Believeandforward</a></b>\n` +
       `⏰ Response time: within 24 hours\n\n` +
       `Please include as much detail as possible — your order number, ` +
       `campaign name, or account information — so we can assist you quickly.`,
