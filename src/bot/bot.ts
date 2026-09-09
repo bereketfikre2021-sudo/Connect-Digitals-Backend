@@ -115,8 +115,8 @@ export async function initBot(): Promise<void> {
     }).catch((err) => logger.error({ err }, "Bot polling error"));
   } else {
     // Production: register webhook pointing to our Express route /bot/webhook
-    const webhookUrl = env.TELEGRAM_WEBHOOK_URL;
-    const secretToken = env.TELEGRAM_WEBHOOK_SECRET;
+    const webhookUrl = env.TELEGRAM_WEBHOOK_URL.trim();
+    const secretToken = env.TELEGRAM_WEBHOOK_SECRET.trim();
 
     if (!webhookUrl) {
       logger.warn("TELEGRAM_WEBHOOK_URL not set — bot webhook not registered");

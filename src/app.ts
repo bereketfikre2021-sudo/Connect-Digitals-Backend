@@ -122,7 +122,7 @@ app.use("/api/v1/notifications", notificationsRouter);
 // The bot is integrated here so it runs in the same process as the API on Render.
 // Telegram POSTs updates to /bot/webhook; we verify the secret token and dispatch.
 export async function registerBotWebhook(botInstance: import("grammy").Bot): Promise<void> {
-  const secretToken = env.TELEGRAM_WEBHOOK_SECRET;
+  const secretToken = env.TELEGRAM_WEBHOOK_SECRET.trim();
 
   const handleUpdate = webhookCallback(botInstance, "express", {
     secretToken: secretToken || undefined,

@@ -32,8 +32,8 @@ export const env = {
   // Telegram — bot token always required (used for notifications even in dev)
   TELEGRAM_BOT_TOKEN:      required("TELEGRAM_BOT_TOKEN"),
   TELEGRAM_BOT_USERNAME:   optional("TELEGRAM_BOT_USERNAME", ""),
-  TELEGRAM_WEBHOOK_URL:    optional("TELEGRAM_WEBHOOK_URL",    ""),
-  TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET", ""),
+  TELEGRAM_WEBHOOK_URL:    optional("TELEGRAM_WEBHOOK_URL",    "").trim(),
+  TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET", "").trim(),
 
   // URLs
   MINI_APP_URL:  optional("MINI_APP_URL",  ""),
