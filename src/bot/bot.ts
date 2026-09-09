@@ -57,7 +57,7 @@ bot.on("callback_query:data",         handleUnknownCallback);
 // ── Persistent keyboard button handlers ───────────────────────────────────────
 // Use regex to match button text regardless of leading emoji characters.
 // This handles both emoji and plain-text button label variants.
-bot.hears(/Open App/i,      handleStart);
+bot.hears(/Open App/i,      handleApp);
 bot.hears(/My Campaigns/i,  handleCampaigns);
 bot.hears(/My Wallet/i,     handleWallet);
 bot.hears(/How It Works/i,  handleHowItWorks);
