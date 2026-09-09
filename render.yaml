@@ -24,6 +24,12 @@ services:
         sync: false
       - key: TELEGRAM_BOT_USERNAME
         sync: false
+      # Webhook URL = this Render service's public URL + /bot/webhook
+      # Set this in the Render dashboard to: https://connect-digitals-api.onrender.com/bot/webhook
+      - key: TELEGRAM_WEBHOOK_URL
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
       - key: MINI_APP_URL
         sync: false
       - key: ADMIN_URL

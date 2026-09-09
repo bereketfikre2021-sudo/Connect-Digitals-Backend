@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { env } from "./lib/env.js";
 import { globalLimiter } from "./middleware/rateLimit.js";
 import { errorHandler, notFound } from "./middleware/error.js";
+import { webhookCallback } from "grammy";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -116,6 +117,32 @@ app.use("/api/v1/admin/promo-codes", adminPromoCodesRouter);
 app.use("/api/v1/admin/notifications", adminNotificationsRouter);
 app.use("/api/v1/promo-codes", promoCodesRouter);
 app.use("/api/v1/notifications", notificationsRouter);
+
+// ── Telegram bot webhook ──────────────────────────────────────────────────────
+// The bot is integrated here so it runs in the same process as the API on Render.
+// Telegram POSTs updates to /bot/webhook; we verify the secret token and dispatch.
+export async function registerBotWebhook(botInstance: import("grammy").Bot): Promise<void> {
+  const secretToken = env.TELEGRAM_WEBHOOK_SECRET;
+
+  const handleUpdate = webhookCallback(botInstance, "express", {
+    secretToken: secretToken || undefined,
+    timeoutMilliseconds: 10_000,
+  });
+
+  // This route is excluded from the global rate limiter intentionally —
+  // Telegram is a trusted caller and rate limiting would drop updates.
+  app.post(
+    "/bot/webhook",
+    express.json({ limit: "1mb" }),
+    async (req, res, next) => {
+      try {
+        await handleUpdate(req, res);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+}
 
 // ── Serve Mini App static build (monorepo / local dev only) ──────────────────
 // When deployed standalone on Render, the mini-app is on Netlify — skip this.
