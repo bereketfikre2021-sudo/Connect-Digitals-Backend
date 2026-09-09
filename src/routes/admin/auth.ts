@@ -143,8 +143,91 @@ adminAuthRouter.post("/logout", requireAdmin, async (req, res, next) => {
 });
 
 /**
- * GET /api/v1/admin/auth/me
+ * POST /api/v1/admin/auth/forgot-password
+ * Body: { email: string }
+ *
+ * Sends a Supabase password reset email to the given address if it belongs
+ * to an active admin. Always responds 200 (no enumeration of valid emails).
  */
+adminAuthRouter.post("/forgot-password", authLimiter, async (req, res, next) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email || typeof email !== "string") {
+      throw new AppError(400, "MISSING_EMAIL", "Email is required");
+    }
+
+    const normalised = email.toLowerCase().trim();
+
+    // Only trigger if this is a known active admin — otherwise silently succeed
+    const admin = await prisma.adminUser.findUnique({
+      where: { email: normalised },
+      select: { isActive: true },
+    });
+
+    if (admin?.isActive) {
+      const supabase = getServiceClient();
+      // redirectTo is where Supabase sends the user after clicking the email link.
+      // Set ADMIN_URL env var to your deployed admin URL.
+      const redirectTo = `${process.env["ADMIN_URL"] ?? ""}/reset-password`;
+      await supabase.auth.admin.generateLink({
+        type: "recovery",
+        email: normalised,
+        options: { redirectTo },
+      });
+    }
+
+    // Always return 200 — never reveal whether the email exists
+    res.json({ success: true, message: "If that email belongs to an admin account, a reset link has been sent." });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/v1/admin/auth/reset-password
+ * Body: { accessToken: string, newPassword: string }
+ *
+ * Sets a new password using the Supabase access token from the reset email link.
+ */
+adminAuthRouter.post("/reset-password", async (req, res, next) => {
+  try {
+    const { accessToken, newPassword } = req.body as { accessToken?: string; newPassword?: string };
+    if (!accessToken || !newPassword) {
+      throw new AppError(400, "MISSING_FIELDS", "accessToken and newPassword are required");
+    }
+    if (newPassword.length < 8) {
+      throw new AppError(400, "PASSWORD_TOO_SHORT", "Password must be at least 8 characters");
+    }
+
+    const supabase = getServiceClient();
+
+    // Verify the token belongs to an admin before allowing the reset
+    const { data: userData, error: userErr } = await supabase.auth.getUser(accessToken);
+    if (userErr || !userData.user) {
+      throw new AppError(401, "INVALID_TOKEN", "Reset link is invalid or has expired");
+    }
+
+    const admin = await prisma.adminUser.findUnique({
+      where: { email: userData.user.email ?? "" },
+      select: { id: true, isActive: true },
+    });
+    if (!admin?.isActive) {
+      throw new AppError(403, "NOT_AN_ADMIN", "This account does not have admin access");
+    }
+
+    // Update the password
+    const { error: updateErr } = await supabase.auth.admin.updateUserById(userData.user.id, {
+      password: newPassword,
+    });
+    if (updateErr) {
+      throw new AppError(500, "RESET_FAILED", "Failed to update password");
+    }
+
+    res.json({ success: true, message: "Password updated successfully. You can now log in." });
+  } catch (err) {
+    next(err);
+  }
+});
 adminAuthRouter.get("/me", requireAdmin, async (req, res, next) => {
   try {
     const admin = await prisma.adminUser.findUnique({
