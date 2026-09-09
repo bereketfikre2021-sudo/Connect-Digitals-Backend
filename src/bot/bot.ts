@@ -55,13 +55,13 @@ bot.callbackQuery("support_contact",  handleCallbackSupportContact);
 bot.on("callback_query:data",         handleUnknownCallback);
 
 // ── Persistent keyboard button handlers ───────────────────────────────────────
-// Must match KB constants in lib/keyboard.ts exactly
-import { KB } from "./lib/keyboard.js";
-bot.hears(KB.OPEN_APP,      handleStart);
-bot.hears(KB.MY_CAMPAIGNS,  handleCampaigns);
-bot.hears(KB.MY_WALLET,     handleWallet);
-bot.hears(KB.HOW_IT_WORKS,  handleHowItWorks);
-bot.hears(KB.SUPPORT,       handleSupport);
+// Use regex to match button text regardless of leading emoji characters.
+// This handles both emoji and plain-text button label variants.
+bot.hears(/Open App/i,      handleStart);
+bot.hears(/My Campaigns/i,  handleCampaigns);
+bot.hears(/My Wallet/i,     handleWallet);
+bot.hears(/How It Works/i,  handleHowItWorks);
+bot.hears(/^Support$/i,     handleSupport);
 
 // ── Fallback ──────────────────────────────────────────────────────────────────
 bot.on("message", async (ctx) => {
