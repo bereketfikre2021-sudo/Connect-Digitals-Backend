@@ -37,6 +37,7 @@ import { adminAuditLogsRouter } from "./routes/admin/audit-logs.js";
 import { adminExportRouter } from "./routes/admin/export.js";
 import { adminPromoCodesRouter } from "./routes/admin/promo-codes.js";
 import { adminNotificationsRouter } from "./routes/admin/notifications.js";
+import { adminSettingsRouter } from "./routes/admin/settings.js";
 import { promoCodesRouter } from "./routes/promo-codes.js";
 import { notificationsRouter } from "./routes/notifications.js";
 
@@ -115,6 +116,7 @@ app.use("/api/v1/export", adminExportRouter);
 app.use("/api/v1/admin/export", adminExportRouter);
 app.use("/api/v1/admin/promo-codes", adminPromoCodesRouter);
 app.use("/api/v1/admin/notifications", adminNotificationsRouter);
+app.use("/api/v1/admin/settings", adminSettingsRouter);
 app.use("/api/v1/promo-codes", promoCodesRouter);
 app.use("/api/v1/notifications", notificationsRouter);
 

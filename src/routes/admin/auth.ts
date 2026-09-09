@@ -235,7 +235,15 @@ adminAuthRouter.get("/me", requireAdmin, async (req, res, next) => {
       select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true },
     });
     if (!admin || !admin.isActive) throw new AppError(401, "UNAUTHORIZED", "Account inactive");
-    res.json({ success: true, data: admin });
+
+    // Also fetch the global brand logo (set by any admin)
+    const logoSetting = await prisma.adminUser.findFirst({
+      where: { isActive: true, brandLogoUrl: { not: null } },
+      select: { brandLogoUrl: true },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    res.json({ success: true, data: { ...admin, brandLogoUrl: logoSetting?.brandLogoUrl ?? null } });
   } catch (err) {
     next(err);
   }
