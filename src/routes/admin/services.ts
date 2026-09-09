@@ -34,6 +34,7 @@ adminServicesRouter.get("/", async (_req, res, next) => {
             id: true, name: true, description: true, quantity: true,
             priceETB: true, deliveryDaysMin: true, deliveryDaysMax: true,
             isActive: true, sortOrder: true,
+            _count: { select: { orders: true } },
           },
         },
         _count: { select: { orders: true } },
