@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm install && npm run build && npm run db:migrate:deploy && npx prisma generate
+    buildCommand: npm install && npx prisma generate && npm run build && npm run db:migrate:deploy
     startCommand: npm run start
     healthCheckPath: /health
     envVars:
