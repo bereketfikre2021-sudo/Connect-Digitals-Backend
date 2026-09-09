@@ -31,9 +31,8 @@ adminWalletRouter.get("/", async (req, res, next) => {
             { user: { lastName: { contains: search, mode: "insensitive" as const } } },
             { user: { username: { contains: search, mode: "insensitive" as const } } },
           ],
-          deletedAt: null,
         }
-      : { deletedAt: null };
+      : {};
 
     const [wallets, total] = await Promise.all([
       prisma.wallet.findMany({
