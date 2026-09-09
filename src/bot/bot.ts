@@ -55,12 +55,13 @@ bot.callbackQuery("support_contact",  handleCallbackSupportContact);
 bot.on("callback_query:data",         handleUnknownCallback);
 
 // ── Persistent keyboard button handlers ───────────────────────────────────────
-// Keyboard buttons send plain text messages — map them to the right handlers.
-bot.hears("🚀 Open App",      handleStart);
-bot.hears("📊 My Campaigns",  handleCampaigns);
-bot.hears("💳 My Wallet",     handleWallet);
-bot.hears("❓ How It Works",  handleHowItWorks);
-bot.hears("💬 Support",       handleSupport);
+// Must match KB constants in lib/keyboard.ts exactly
+import { KB } from "./lib/keyboard.js";
+bot.hears(KB.OPEN_APP,      handleStart);
+bot.hears(KB.MY_CAMPAIGNS,  handleCampaigns);
+bot.hears(KB.MY_WALLET,     handleWallet);
+bot.hears(KB.HOW_IT_WORKS,  handleHowItWorks);
+bot.hears(KB.SUPPORT,       handleSupport);
 
 // ── Fallback ──────────────────────────────────────────────────────────────────
 bot.on("message", async (ctx) => {

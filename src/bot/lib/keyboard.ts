@@ -1,24 +1,26 @@
-/**
- * Persistent reply keyboard shown at the bottom of every chat.
- * Using ReplyKeyboard (not InlineKeyboard) so it stays permanently
- * visible — the same pattern used by bots like the one in the screenshot.
- *
- * The keyboard is sent with every command reply using reply_markup.
- * Telegram keeps it persistent until explicitly removed.
- */
 import { Keyboard } from "grammy";
 
+// Button labels — must match exactly what bot.hears() listens for
+export const KB = {
+  OPEN_APP:     "Open App",
+  MY_CAMPAIGNS: "My Campaigns",
+  MY_WALLET:    "My Wallet",
+  HOW_IT_WORKS: "How It Works",
+  SUPPORT:      "Support",
+} as const;
+
 /**
- * Returns the main persistent keyboard.
- * All 5 buttons map to bot commands the user can tap to trigger.
+ * Persistent reply keyboard — stays locked to the bottom of the chat.
+ * Uses plain text labels (no emojis) to avoid encoding issues across platforms.
+ * Telegram renders these as standard keyboard buttons.
  */
 export function mainKeyboard(): Keyboard {
   return new Keyboard()
-    .text("🚀 Open App").text("📊 My Campaigns")
+    .text(KB.OPEN_APP).text(KB.MY_CAMPAIGNS)
     .row()
-    .text("💳 My Wallet").text("❓ How It Works")
+    .text(KB.MY_WALLET).text(KB.HOW_IT_WORKS)
     .row()
-    .text("💬 Support")
-    .resized()      // fit the keyboard to button count — no empty space
-    .persistent();  // stay visible until explicitly removed
+    .text(KB.SUPPORT)
+    .resized()
+    .persistent();
 }
