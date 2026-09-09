@@ -3,6 +3,7 @@ import { InlineKeyboard } from "grammy";
 import { prisma } from "../../lib/prisma.js";
 import { env } from "../lib/env.js";
 import { logger } from "../lib/logger.js";
+import { mainKeyboard } from "../lib/keyboard.js";
 
 export async function handleCampaigns(ctx: Context): Promise<void> {
   const telegramUserId = String(ctx.from?.id);
@@ -23,7 +24,7 @@ export async function handleCampaigns(ctx: Context): Promise<void> {
       }
       await ctx.reply(
         "You don't have an account yet. Use /start to open the app and get started.",
-        { reply_markup: keyboard }
+        { reply_markup: mainKeyboard() }
       );
       return;
     }
@@ -60,20 +61,18 @@ export async function handleCampaigns(ctx: Context): Promise<void> {
 
     // ── No campaigns ─────────────────────────────────────────────────────────
     if (campaigns.length === 0) {
-      const keyboard = new InlineKeyboard();
-      if (miniAppUrl) {
-        keyboard.webApp("🚀 Create Your First Campaign", miniAppUrl);
-      }
+      const noKeyboard = new InlineKeyboard();
+      if (miniAppUrl) noKeyboard.webApp("🚀 Create Your First Campaign", miniAppUrl);
       await ctx.reply(
         `<b>📊 Your Campaigns</b>\n\n` +
         `You haven't launched a campaign yet.\n\n` +
         `Your next campaign could be the beginning of something bigger.`,
-        { parse_mode: "HTML", reply_markup: keyboard }
+        { parse_mode: "HTML", reply_markup: noKeyboard }
       );
+      await ctx.reply("Use the menu below to continue.", { reply_markup: mainKeyboard() });
       return;
     }
 
-    // ── Has campaigns ─────────────────────────────────────────────────────────
     const lines = campaigns.map((c) => {
       const status = formatCampaignStatus(c.internalStatus);
       const budget = c.budgetETB != null ? `ETB ${(c.budgetETB / 100).toFixed(2)}` : "Budget TBD";
@@ -84,19 +83,19 @@ export async function handleCampaigns(ctx: Context): Promise<void> {
       return `• <b>${name}</b>\n  ${status} · ${budget} · ${date}`;
     });
 
-    const keyboard = new InlineKeyboard();
-    if (miniAppUrl) {
-      keyboard.webApp("📊 View Campaigns", miniAppUrl);
-    }
+    const viewKeyboard = new InlineKeyboard();
+    if (miniAppUrl) viewKeyboard.webApp("📊 View Campaigns", miniAppUrl);
 
     await ctx.reply(
       `<b>📊 Your Campaigns</b>\n\n${lines.join("\n\n")}`,
-      { parse_mode: "HTML", reply_markup: keyboard }
+      { parse_mode: "HTML", reply_markup: viewKeyboard }
     );
+    await ctx.reply("Use the menu below to continue.", { reply_markup: mainKeyboard() });
   } catch (err) {
     logger.error({ err, userId }, "Failed to fetch campaigns for /campaigns");
     await ctx.reply(
-      "Something went wrong while retrieving your information. Please try again shortly or contact support."
+      "Something went wrong while retrieving your information. Please try again shortly or contact support.",
+      { reply_markup: mainKeyboard() }
     );
   }
 }

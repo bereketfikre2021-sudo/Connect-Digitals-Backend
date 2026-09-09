@@ -1,18 +1,18 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
 import { env } from "../lib/env.js";
+import { mainKeyboard } from "../lib/keyboard.js";
 
 export async function handleStart(ctx: Context): Promise<void> {
   const miniAppUrl = env.MINI_APP_URL;
 
-  const keyboard = new InlineKeyboard();
-
+  // Inline buttons for quick actions within the message
+  const inline = new InlineKeyboard();
   if (miniAppUrl) {
-    keyboard.webApp("🚀 Open App", miniAppUrl);
-    keyboard.row();
+    inline.webApp("🚀 Open App", miniAppUrl);
+    inline.row();
   }
-
-  keyboard
+  inline
     .text("📋 How It Works", "how_it_works")
     .row()
     .text("💬 Support", "support_menu");
@@ -26,7 +26,7 @@ export async function handleStart(ctx: Context): Promise<void> {
     `📈 Reach your target audience\n` +
     `💳 Manage payments\n` +
     `📊 Track your campaigns\n\n` +
-    `Ready to make your next move?`,
-    { parse_mode: "HTML", reply_markup: keyboard }
+    `Use the menu below to get started.`,
+    { parse_mode: "HTML", reply_markup: mainKeyboard() }
   );
 }

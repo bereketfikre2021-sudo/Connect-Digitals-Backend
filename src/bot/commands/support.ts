@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
+import { mainKeyboard } from "../lib/keyboard.js";
 
 export async function handleSupport(ctx: Context): Promise<void> {
   const keyboard = new InlineKeyboard()
@@ -18,4 +19,7 @@ export async function handleSupport(ctx: Context): Promise<void> {
     `What do you need help with?`,
     { parse_mode: "HTML", reply_markup: keyboard }
   );
+
+  // Re-attach the persistent keyboard so it stays visible after the inline reply
+  await ctx.reply("Tap an option above or use the menu below.", { reply_markup: mainKeyboard() });
 }

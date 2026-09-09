@@ -1,13 +1,14 @@
 import type { Context } from "grammy";
 import { InlineKeyboard } from "grammy";
 import { env } from "../lib/env.js";
+import { mainKeyboard } from "../lib/keyboard.js";
 
 export async function handleHowItWorks(ctx: Context): Promise<void> {
   const miniAppUrl = env.MINI_APP_URL;
 
-  const keyboard = new InlineKeyboard();
+  const inline = new InlineKeyboard();
   if (miniAppUrl) {
-    keyboard.webApp("🚀 Start Advertising", miniAppUrl);
+    inline.webApp("🚀 Start Advertising", miniAppUrl);
   }
 
   await ctx.reply(
@@ -25,6 +26,8 @@ export async function handleHowItWorks(ctx: Context): Promise<void> {
     `<b>06 · Track</b>\n` +
     `Monitor your campaign and stay updated from your dashboard.\n\n` +
     `Ready to get started?`,
-    { parse_mode: "HTML", reply_markup: keyboard }
+    { parse_mode: "HTML", reply_markup: inline }
   );
+
+  await ctx.reply("Use the menu below to continue.", { reply_markup: mainKeyboard() });
 }

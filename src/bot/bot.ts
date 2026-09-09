@@ -54,10 +54,20 @@ bot.callbackQuery("support_account",  handleCallbackSupportAccount);
 bot.callbackQuery("support_contact",  handleCallbackSupportContact);
 bot.on("callback_query:data",         handleUnknownCallback);
 
+// ── Persistent keyboard button handlers ───────────────────────────────────────
+// Keyboard buttons send plain text messages — map them to the right handlers.
+bot.hears("🚀 Open App",      handleStart);
+bot.hears("📊 My Campaigns",  handleCampaigns);
+bot.hears("💳 My Wallet",     handleWallet);
+bot.hears("❓ How It Works",  handleHowItWorks);
+bot.hears("💬 Support",       handleSupport);
+
 // ── Fallback ──────────────────────────────────────────────────────────────────
 bot.on("message", async (ctx) => {
+  const { mainKeyboard } = await import("./lib/keyboard.js");
   await ctx.reply(
-    "I didn't understand that. Use /help to see available commands, or /start to open the app."
+    "I didn't understand that. Use the menu below or type /help.",
+    { reply_markup: mainKeyboard() }
   );
 });
 
