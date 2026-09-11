@@ -715,3 +715,109 @@ model AuditLog {
   @@index([orderId])
   @@index([createdAt])
 }
+
+// =============================================================================
+// BROADCAST
+// =============================================================================
+
+enum BroadcastMessageType {
+  TEXT
+  PHOTO
+  VIDEO
+  DOCUMENT
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BroadcastAudienceType {
+  ALL_USERS
+}
+
+enum BroadcastDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  BLOCKED
+}
+
+/// Admin-initiated broadcast message sent to Telegram users via the bot.
+/// A single Broadcast record is created before sending and tracks the full
+/// lifecycle. BroadcastDelivery records track per-recipient outcomes.
+model Broadcast {
+  id           String               @id @default(cuid())
+  /// Telegram numeric user ID (string) of the admin who created this broadcast
+  createdBy    String
+  messageType  BroadcastMessageType
+  /// Plain text content — used as message body for TEXT, or fallback caption
+  text         String?
+  /// Caption for PHOTO / VIDEO / DOCUMENT messages
+  caption      String?
+  /// Telegram file_id for reuse (PHOTO / VIDEO / DOCUMENT)
+  mediaFileId  String?
+  /// Inline keyboard buttons — JSON array of rows of {text, url} objects
+  /// Shape: Array<Array<{text: string, url: string}>>
+  buttons      Json?
+  audienceType BroadcastAudienceType @default(ALL_USERS)
+  status       BroadcastStatus       @default(DRAFT)
+  totalRecipients Int                @default(0)
+  sentCount       Int                @default(0)
+  failedCount     Int                @default(0)
+  blockedCount    Int                @default(0)
+  createdAt    DateTime             @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+
+  deliveries BroadcastDelivery[]
+
+  @@index([status])
+  @@index([createdBy])
+  @@index([createdAt])
+}
+
+/// Per-recipient delivery record for a broadcast.
+/// One row per (broadcast, telegramUserId) pair.
+model BroadcastDelivery {
+  id               String                  @id @default(cuid())
+  broadcastId      String
+  /// Telegram numeric user ID as string — matches TelegramIdentity.telegramUserId
+  telegramUserId   String
+  status           BroadcastDeliveryStatus @default(PENDING)
+  /// Telegram message_id returned on successful send
+  telegramMessageId Int?
+  errorCode        String?
+  errorMessage     String?
+  sentAt           DateTime?
+  createdAt        DateTime                @default(now())
+
+  broadcast Broadcast @relation(fields: [broadcastId], references: [id])
+
+  @@unique([broadcastId, telegramUserId])
+  @@index([broadcastId])
+  @@index([telegramUserId])
+  @@index([status])
+}
+
+/// Ephemeral wizard state for an admin composing a broadcast in the bot.
+/// Stored in the database so it survives Render instance restarts.
+/// Automatically expires — clean up stale drafts with a cron or on next /broadcast.
+model BroadcastDraft {
+  id             String   @id @default(cuid())
+  /// Telegram numeric user ID (string) of the admin composing this draft
+  telegramAdminId String  @unique
+  /// Current step in the wizard: type_select | content | buttons | preview
+  step           String   @default("type_select")
+  /// Draft payload — mirrors Broadcast fields, stored as JSON for flexibility
+  payload        Json     @default("{}")
+  createdAt      DateTime @default(now())
+  /// Drafts older than this are considered abandoned and ignored
+  expiresAt      DateTime
+
+  @@index([telegramAdminId])
+  @@index([expiresAt])
+}

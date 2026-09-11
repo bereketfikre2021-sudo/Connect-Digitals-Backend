@@ -35,6 +35,11 @@ export const env = {
   TELEGRAM_WEBHOOK_URL:    optional("TELEGRAM_WEBHOOK_URL",    "").trim(),
   TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET", "").trim(),
 
+  // Telegram admin IDs — comma-separated list of Telegram numeric user IDs
+  // that are authorized to use admin bot commands (e.g. /broadcast).
+  // Example: TELEGRAM_ADMIN_IDS=123456789,987654321
+  TELEGRAM_ADMIN_IDS: optional("TELEGRAM_ADMIN_IDS", ""),
+
   // URLs
   MINI_APP_URL:  optional("MINI_APP_URL",  ""),
   ADMIN_URL:     optional("ADMIN_URL",     ""),

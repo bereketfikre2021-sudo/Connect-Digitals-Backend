@@ -18,5 +18,7 @@ export const env = {
   BOT_PORT:                parseInt(optional("BOT_PORT", "3001"), 10),
   MINI_APP_URL:            optional("MINI_APP_URL",            ""),
   LOG_LEVEL:               optional("LOG_LEVEL",               "info"),
+  // Telegram admin IDs — comma-separated numeric user IDs for admin bot commands
+  TELEGRAM_ADMIN_IDS:      optional("TELEGRAM_ADMIN_IDS",      ""),
   isDev: () => env.NODE_ENV === "development",
 } as const;
