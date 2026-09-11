@@ -601,3 +601,80 @@ export async function getBroadcastDetail(broadcastId: string) {
     },
   });
 }
+
+// ── Media upload helper ───────────────────────────────────────────────────────
+
+export type UploadableMessageType = "PHOTO" | "VIDEO" | "DOCUMENT";
+
+/**
+ * Upload a media file to Telegram and return the file_id.
+ *
+ * Strategy:
+ *  1. Send the file to the admin's own Telegram chat using the bot API.
+ *     Telegram assigns a file_id to the uploaded file server-side.
+ *  2. Capture the file_id from the sent message.
+ *  3. Immediately delete the staging message so the admin's chat stays clean.
+ *  4. Return the file_id — reusable for any number of broadcast sends.
+ *
+ * @param buffer       Raw file bytes (from multer memory storage)
+ * @param mimeType     MIME type of the file
+ * @param filename     Original filename (used for documents)
+ * @param messageType  PHOTO | VIDEO | DOCUMENT
+ * @param adminChatId  Telegram numeric user ID of the uploading admin
+ */
+export async function uploadMediaForBroadcast(
+  buffer:      Buffer,
+  mimeType:    string,
+  filename:    string,
+  messageType: UploadableMessageType,
+  adminChatId: string,
+): Promise<string> {
+  const bot = getBot();
+
+  // grammY accepts a Buffer wrapped in InputFile
+  const { InputFile } = await import("grammy");
+  const inputFile = new InputFile(buffer, filename);
+
+  let fileId: string;
+  let messageId: number;
+
+  try {
+    switch (messageType) {
+      case "PHOTO": {
+        const msg = await bot.api.sendPhoto(adminChatId, inputFile);
+        const photos = msg.photo;
+        const largest = photos[photos.length - 1];
+        if (!largest) throw new Error("Telegram returned no photo sizes");
+        fileId    = largest.file_id;
+        messageId = msg.message_id;
+        break;
+      }
+      case "VIDEO": {
+        const msg = await bot.api.sendVideo(adminChatId, inputFile);
+        fileId    = msg.video.file_id;
+        messageId = msg.message_id;
+        break;
+      }
+      case "DOCUMENT": {
+        const msg = await bot.api.sendDocument(adminChatId, inputFile);
+        fileId    = msg.document.file_id;
+        messageId = msg.message_id;
+        break;
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to upload file to Telegram: ${msg}`);
+  }
+
+  // Delete the staging message immediately — keeps the admin's chat clean
+  try {
+    await bot.api.deleteMessage(adminChatId, messageId);
+  } catch {
+    // Non-fatal — the file_id is already captured
+    logger.warn({ adminChatId, messageId }, "Could not delete staging upload message");
+  }
+
+  logger.info({ adminChatId, messageType, fileId }, "Media uploaded to Telegram — file_id captured");
+  return fileId;
+}
