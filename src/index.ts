@@ -8,8 +8,11 @@ const server = app.listen(env.PORT, async () => {
 
   // Register the bot webhook route on the Express app, then start the bot.
   // Done after the server is listening so the webhook URL is reachable.
+  // In development, skip the webhook route entirely and use long-polling.
   try {
-    await registerBotWebhook(bot);
+    if (!env.isDev()) {
+      await registerBotWebhook(bot);
+    }
     await initBot();
   } catch (err) {
     // Bot startup failure must never crash the API

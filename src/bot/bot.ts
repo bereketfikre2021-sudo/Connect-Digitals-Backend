@@ -184,11 +184,19 @@ export async function initBot(): Promise<void> {
   }
 
   if (env.isDev()) {
-    await bot.api.deleteWebhook();
-    logger.info("Bot starting in long-polling mode (development)");
-    // Don't await — long-polling runs indefinitely and would block the API startup
+    // In development, delete any active webhook first (may be set from a prior
+    // production deployment). drop_pending_updates prevents a flood of stale
+    // updates from arriving when polling starts.
+    try {
+      await bot.api.deleteWebhook({ drop_pending_updates: true });
+      logger.info("Webhook deleted — starting long-polling (development)");
+    } catch (err) {
+      logger.warn({ err }, "deleteWebhook failed — attempting to start polling anyway");
+    }
+    // Don't await — long-polling runs indefinitely and would block API startup
     bot.start({
       onStart: (info) => logger.info({ username: info.username }, "Bot polling started"),
+      allowed_updates: ["message", "callback_query"],
     }).catch((err) => logger.error({ err }, "Bot polling error"));
   } else {
     // Production: register webhook pointing to our Express route /bot/webhook
