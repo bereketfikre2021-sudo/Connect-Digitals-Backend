@@ -184,14 +184,20 @@ async function resolveAudience(
 
 function buildInlineKeyboard(buttons: BroadcastButtons): InlineKeyboard {
   const kb = new InlineKeyboard();
+
   for (let rowIdx = 0; rowIdx < buttons.length; rowIdx++) {
     const row = buttons[rowIdx];
     if (!row) continue;
+
+    // Add a row separator before each row except the first
+    if (rowIdx > 0) kb.row();
+
     for (const btn of row) {
-      kb.url(btn.text, btn.url);
+      if (!btn?.text || !btn?.url) continue;
+      kb.url(btn.text.trim(), btn.url.trim());
     }
-    if (rowIdx < buttons.length - 1) kb.row();
   }
+
   return kb;
 }
 
@@ -214,9 +220,11 @@ async function sendToRecipient(
   chatId:  string,
   input:   CreateBroadcastInput,
 ): Promise<SendOutcome> {
-  const kb = input.buttons && input.buttons.length > 0
-    ? buildInlineKeyboard(input.buttons)
-    : undefined;
+  // Only build keyboard if buttons array has at least one valid button
+  const hasButtons = input.buttons && input.buttons.length > 0 &&
+    input.buttons.some(row => row.some(btn => btn?.text && btn?.url));
+
+  const kb = hasButtons ? buildInlineKeyboard(input.buttons!) : undefined;
   const parseMode = "HTML" as const;
 
   try {
