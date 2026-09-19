@@ -67,7 +67,10 @@ paymentsRouter.post("/upload-proof", paymentSubmitLimiter, upload.single("screen
 const submitSchema = z.object({
   orderId: z.string().cuid().nullable().optional(),
   paymentMethodId: z.string().cuid(),
-  amountETB: z.number().int().positive(),
+  // amountETB from client is used only for wallet deposits.
+  // For order payments the authoritative amount is read from the Order record
+  // server-side — so we accept 0 here and let the service override it.
+  amountETB: z.number().int().min(0),
   reference: z.string().min(1).max(100).trim(),
   screenshotKey: z.string().optional(),
   idempotencyKey: z.string().uuid(),
@@ -84,7 +87,13 @@ paymentsRouter.post("/", paymentSubmitLimiter, async (req, res, next) => {
       throw new AppError(422, "VALIDATION_ERROR", "Invalid payment data", parsed.error.flatten());
     }
 
-    const { amountETB, screenshotKey, ...rest } = parsed.data;
+    const { amountETB, screenshotKey, orderId, ...rest } = parsed.data;
+
+    // For order payments: client amountETB is ignored — the service uses the DB value.
+    // For wallet deposits (orderId null): amountETB must be positive.
+    if (!orderId && amountETB <= 0) {
+      throw new AppError(422, "INVALID_AMOUNT", "Deposit amount must be positive");
+    }
 
     const screenshotUrl = screenshotKey
       ? await getSignedProofUrl(screenshotKey)
@@ -95,6 +104,7 @@ paymentsRouter.post("/", paymentSubmitLimiter, async (req, res, next) => {
       amountETB,
       screenshotKey,
       screenshotUrl,
+      orderId,
       ...rest,
       ipAddress: req.ip,
     });
